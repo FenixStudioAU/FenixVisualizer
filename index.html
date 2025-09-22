@@ -1,0 +1,2034 @@
+
+<!doctype html>
+<!--
+Fenix Visualizer (Community Edition)
+Copyright (C) 2025 <Your Name or Org>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details. 
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Fenix Visualizer — Open Source</title>
+<style>
+  :root{
+    --bg:#0b0b0b; --fg:#eaeaea; --muted:#c9c9c9;
+    --panel:#111418; --panel-2:#0e1216; --line:#1e2733;
+    --acc:#4da3ff; --ok:#24c28a; --warn:#ffb020;
+    --radius:6px;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .shell{max-width:1200px;margin:0 auto;padding:12px}
+  .grid-main{display:grid;grid-template-columns:360px 1fr;gap:12px;align-items:start}
+  @media (max-width:980px){.grid-main{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 6px 18px rgba(0,0,0,.25)}
+  .card h3{margin:0;padding:10px 12px;border-bottom:1px solid var(--line);font-size:14px;letter-spacing:.3px;font-weight:600;color:#dbe9ff;background:linear-gradient(180deg,rgba(77,163,255,.07),transparent)}
+  .card .body{padding:12px}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .stack{display:grid;gap:8px}
+  .field{display:grid;gap:6px;min-width:0}
+  .field label{font-size:12px;color:#b8c2d1}
+  input[type="text"],input[type="number"],input[type="range"],select{
+    background:#0b0f14;color:#e8f1ff;border:1px solid #243244;border-radius:8px;padding:10px 10px;min-width:0;outline:none
+  }
+  input[type=file]{display:none}
+  input[type="range"]{width:180px}
+  .btn{background:#102033;color:#eaf3ff;border:1px solid #274463;border-radius:8px;padding:10px 12px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;user-select:none}
+  .btn:hover{background:#122741}
+  .btn[disabled]{opacity:.55;cursor:not-allowed}
+  .btn.acc{background:#14365a;border-color:#2b67a1}
+  .btn.subtle{background:#0e141b;border-color:#1b2735}
+  .danger{color:#ffd6d6;border-color:#703838;background:#321c1c}
+  .ok{border-color:#245b4b;background:#0f1d1a}
+  .warn{border-color:#6d4f1a;background:#241a0b;color:#ffe6b3}
+  canvas{width:100%;max-height:55vh;aspect-ratio:16/9;background:#000;border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.35)}
+  .imglist{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px;background:#0e1216}
+  .imgrow{display:flex;align-items:center;gap:8px;background:#0f141a;border:1px solid #223041;border-radius:8px;padding:6px 8px}
+  .imgrow span{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.95}
+  .imgrow .mini{display:flex;gap:6px}
+  .imgrow button{padding:6px 10px;border-radius:8px;border:1px solid #30465e;background:#142130;color:#d9e9ff;cursor:pointer}
+  .imgrow button:hover{background:#1a2a3d}
+  .note{opacity:.9;font-size:.9rem;color:var(--muted)}
+  .grid-under{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:980px){.grid-under{grid-template-columns:1fr}}
+  .corner-wm{position:fixed;right:8px;bottom:6px;z-index:5;font-size:10px;color:#ffffffaa;user-select:none;pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.8)}
+
+#wmColorField{display:block !important;}
+
+/* === Background Library Grid === */
+.bg-grid-thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;max-height:60vh;overflow:auto;padding:6px}
+.bg-thumb{border:1px solid #444;border-radius:8px;padding:6px;cursor:pointer;display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center}
+.bg-thumb img{max-width:100%;max-height:140px;display:block}
+.bg-thumb .name{font-size:12px;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;text-align:center}
+
+
+/* === Dark theme for background library modal === */
+#bgLibModal{ background:#111; color:#eee; border:1px solid #333; padding:12px 14px; border-radius:12px; }
+#bgLibModal::backdrop{ background: rgba(0,0,0,0.7); }
+#bgGrid .bg-thumb{ background:#0b0b0b; border-color:#2a2a2a; }
+#bgGrid .bg-thumb:hover{ border-color:#555; }
+#bgLibStatus{ color:#bbb; }
+#bgLibModal form strong{ color:#fff; }
+
+
+/* ===== FENIX PATCH: Sticky Preview CSS (v2.7.layout) ===== */
+:root{
+  --page-max: 960px;
+  --sticky-top: 8px; /* distance from top when sticking */
+}
+body{
+  margin:0;
+}
+.main-wrap{
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 0 12px 24px;
+}
+.sticky-preview{
+  position: sticky;
+  top: var(--sticky-top);
+  z-index: 5;
+  background: #0b0b0f;
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 10px;
+  margin: 8px auto 16px;
+}
+.sticky-preview .sticky-inner{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 10px;
+}
+/* Make canvas scale responsively up to container width */
+#canvas{
+  width: 100%;
+  height: auto;
+  max-width: calc(var(--page-max) - 24px);
+  display:block;
+}
+/* Sections below the sticky preview */
+.controls-wrap{
+  max-width: var(--page-max);
+  margin: 0 auto;
+
+}
+.controls-wrap section{
+  background: #0e0e14;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 10px;
+  margin: 12px 0;
+  padding: 12px;
+}
+.controls-wrap .section-title{
+  font-weight: 600;
+  letter-spacing: .2px;
+  opacity: .9;
+  margin-bottom: 8px;
+}
+/* Ensure any field grids collapse nicely under 900px */
+.controls-wrap .row{ display:flex; flex-wrap:wrap; gap:8px; }
+.controls-wrap .field{ min-width: 240px; flex: 1 1 240px; }
+
+
+/* ===== FENIX PATCH: Sticky->Fixed Preview (always on screen) ===== */
+:root{ --preview-offset: 420px; } /* fallback */
+body{ padding-top: var(--preview-offset); }
+
+.sticky-preview{
+  position: fixed;        /* was: sticky */
+  top: var(--sticky-top, 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(var(--page-max, 960px), 100% - 16px);
+  z-index: 50;
+}
+
+</style>
+<style>
+
+
+</style>
+<style>
+
+  /* === Fenix Header (Open Source V3) === */
+  :root{
+    --top-banner-h: 28px;   /* thin black strip */
+    --main-header-h: 56px;  /* nav bar */
+  }
+  .fenix-top-banner {
+  position: fixed; inset: 0 auto auto 0;  height: var(--top-banner-h);  background: #000;  color: #fff;  width: 100%;  z-index: 80;  display: flex;  align-items: center;  gap: 10px;  padding: 0 12px;  font-size: 12px;  letter-spacing: .2px;  opacity: .96; }
+
+.fenix-top-banner a:link, .fenix-top-banner a:visited,
+.fenix-top-banner a:hover,
+.fenix-top-banner a:active {
+  text-decoration: none;
+}
+
+.fenix-top-banner .pill {
+  background: #111; border: 1px solid #2a2a2a;  padding: 2px 8px;  border-radius: 999px;  font-weight: 600;  color: #ddd;
+}
+
+/* First link: dark orange */
+.fenix-top-banner a:first-child {
+  color: #e67e22; 
+}
+
+  .fenix-header{
+    position: fixed; top: var(--top-banner-h); left:0; right:0; z-index: 80;
+    background:#0a0a0a; border-bottom:1px solid rgba(255,255,255,.06);
+  }
+  .fenix-header .header-inner{
+    max-width:1200px; margin:0 auto; height: var(--main-header-h);
+    display:flex; align-items:center; justify-content:space-between; padding:0 12px;
+  }
+  .fenix-header .brand{
+    display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.3px;
+    color:#eaeaea; font-size:15px;
+  }
+  .fenix-header nav a{
+    color:#eaeaea; text-decoration:none; margin-left:16px; font-weight:500; font-size:14px;
+  }
+  .fenix-header nav a:hover{ text-decoration:underline; }
+
+  /* Nudge the fixed preview down below the header stack */
+  :root{ --sticky-top: calc(var(--top-banner-h) + var(--main-header-h) + 8px); }
+
+</style>
+</head>
+<body>
+
+<!-- === Fenix Top Banner + Header (Open Source V3) === -->
+<div class="fenix-top-banner">
+  <span><a href="https://fenixstudio.org/">FenixStudio.org</a></span>
+  <span class="pill"><a href="https://github.com/FenixStudioAU/FenixVisualizer">Visualizer • Open Source V3</a></span>
+  <span class="pill"><a href="https://www.buymeacoffee.com/aihitfactory" style="color: #FFDD00; text-decoration: none; font-family: Cookie, cursive; font-size: 11px;">Buy me a coffee</a></span>
+
+
+  
+</div>
+
+<header class="fenix-header" role="banner">
+  <div class="header-inner">
+    <div class="brand">Fenix Visualizer Open Source Edition</div>
+    <nav aria-label="Primary">
+      <a href="https://fenixstudio.org/">Home</a>
+      <a href="https://visualizer.fenixstudio.org/">Visualizer</a>
+      <a href="#">Tools</a>
+      <a href="#">Help</a>
+    </nav>
+  </div>
+</header>
+<!-- === /Header === -->
+
+    <!-- ===== FENIX: Sticky Preview START ===== -->
+    <div id="previewSticky" class="sticky-preview">
+      <div class="sticky-inner">
+        <canvas id="canvas" width="1280" height="720"></canvas>
+      </div>
+    </div>
+    <!-- ===== FENIX PATCH: Sticky Preview END ===== -->
+
+<!-- ===== FENIX PATCH: Preview height measurer ===== -->
+<script>
+(function(){
+
+
+  /** Recomputes sticky preview height and applies a safe top padding so the fixed canvas never overlaps content. */  function adjustPreviewOffset(){
+    var headerH = 0;
+    var topBanner = document.querySelector('.fenix-top-banner');
+    var mainHeader = document.querySelector('.fenix-header');
+    if(topBanner) headerH += topBanner.offsetHeight||0;
+    if(mainHeader) headerH += mainHeader.offsetHeight||0;
+
+    // Push sticky preview down below header
+    document.documentElement.style.setProperty('--sticky-top', (headerH + 8) + 'px');
+
+    var el = document.getElementById('previewSticky');
+    if(!el) return;
+    // Total padding top = header stack + preview height + small margin
+    var previewH = el.offsetHeight + 12;
+    var totalPad = headerH + previewH;
+    document.documentElement.style.setProperty('--preview-offset', totalPad + 'px');
+  }
+  window.addEventListener('load', adjustPreviewOffset);
+  window.addEventListener('resize', adjustPreviewOffset);
+  // also adjust after first animation frame in case canvas resizes
+  requestAnimationFrame(adjustPreviewOffset);
+})();
+</script>
+
+<div class="main-wrap">
+<div class="controls-wrap">
+
+    
+<div class="shell">
+  <div class="grid-main">
+
+    <!-- LEFT: Controls -->
+    <div class="stack">
+      <div class="card">
+        <h3>Audio</h3>
+        <div class="body stack">
+          <div class="row">
+            <label class="btn acc">🎵 Choose audio<input id="fileInput" type="file" accept="audio/*"></label>
+            <button id="previewBtn" class="btn">▶️ Preview</button>
+            <button id="stopPreviewBtn" class="btn subtle" disabled>⏹ Stop</button>
+            <button id="recordBtn" class="btn warn" disabled>⏺ Render to WebM</button>
+            <a id="downloadLink" class="btn ok" style="display:none">⬇️ Download WebM</a>
+          </div>
+
+          <div class="row">
+            <label class="btn subtle">💬 Lyrics .srt<input id="srtInput" type="file" accept=".srt,text/plain"></label>
+            <button id="helpBtn" class="btn subtle">❓ Help</button>
+            <button id="clearBtn" class="btn danger">Clear</button>
+            <button id="resetFxBtn" class="btn subtle">Reset FX</button>
+          </div>
+
+          <div class="row">
+            <div class="field"><label>Lows (dB)</label><input id="eqLow" type="range" min="-12" max="12" step="1" value="0"></div>
+            <div class="field"><label>Mids (dB)</label><input id="eqMid" type="range" min="-12" max="12" step="1" value="0"></div>
+            <div class="field"><label>Highs (dB)</label><input id="eqHigh" type="range" min="-12" max="12" step="1" value="0"></div>
+          </div>
+
+    
+
+          <div class="note" id="status">Load an audio file to begin.</div>
+        </div>
+ </div>
+      <!-- Loudness + Limiter -->
+
+         <div class="card">
+            <h3>Loudness & Limiter</h3>
+            <div class="body stack">
+              <div class="row">
+                <div class="field">
+                  <label>Auto Gain</label>
+                  <select id="loudAuto"><option value="on">On</option><option value="off" selected>Off</option></select>
+                </div>
+                <div class="field">
+                  <label>Loudness Target (dBFS)</label>
+                  <input id="loudTarget" type="range" min="-24" max="-8" step="0.5" value="-14" style="width:180px">
+                  <span id="loudTargetVal" class="note">-14 dBFS</span>
+                </div>
+                <div class="field">
+                  <label>Limiter</label>
+                  <select id="limitEnable"><option value="on">On</option><option value="off" selected>Off</option></select>
+                </div>
+                <div class="field">
+                  <label>Ceiling (dBFS)</label>
+                  <input id="limThr" type="range" min="-6" max="-0.1" step="0.1" value="-1" style="width:160px">
+                  <span id="limThrVal" class="note">-1.0 dBFS</span>
+                </div>
+                <div class="field">
+                  <label>Release (s)</label>
+                  <input id="limRel" type="range" min="0.01" max="0.5" step="0.01" value="0.08" style="width:160px">
+                  <span id="limRelVal" class="note">0.08 s</span>
+                </div>
+              </div>
+              <div class="note" id="loudReadout">Estimated source loudness: — dBFS</div>
+            </div>
+          </div>
+
+     
+
+      <div class="card">
+        <h3>Images</h3>
+        <div class="body stack">
+          <label class="btn acc">🖼️ Choose background image(s)<input id="imageInput" type="file" accept="image/*" multiple></label>
+          <div class="field">
+            <label class="btn" for="openBgLib" id="openBgLibLabel">📁 Choose from Library…</label><button type="button" id="openBgLib" style="display:none"></button>
+          </div>
+        
+          <div id="imgList" class="imglist"><div style="opacity:.7">No images yet.</div></div>
+          <div class="row">
+            <div class="field"><label>Slideshow (sec)</label><input id="slideSec" type="number" min="1" max="60" step="1" value="8" style="width:90px"></div>
+            <div class="field"><label>BG color if none</label><input id="bgColor" type="color" value="#000000"><button id="bgGreen" class="btn subtle" type="button">Green Screen</button></div>
+          </div>
+          <div class="field">
+            <label>Transition Mode</label>
+            <select id="transitionMode">
+              <option value="random" selected>Random</option>
+              <option value="fade">Fade</option>
+              <option value="wipe">Wipe</option>
+              <option value="push">Push</option>
+              <option value="pan">Pan</option>
+              <option value="drop">Drop</option>
+              <option value="zoom">Zoom</option>
+              <option value="spin">Spin</option>
+              <option value="morph">Morph (soft blur)</option>
+            </select>
+          </div>
+
+          <!-- Frames / Borders -->
+          <div class="field">
+            <label>Frame / Border</label>
+            <div class="row">
+              <select id="frameStyle">
+                <option value="none" selected>None</option>
+                <option value="thin">Thin</option>
+                <option value="thick">Thick</option>
+                <option value="rounded">Rounded</option>
+                <option value="film">Film</option>
+              </select>
+              <div class="row">
+                <div class="field"><label>Color</label><input id="frameColor" type="color" value="#ffffff"></div>
+                <div class="field"><label>Opacity</label><input id="frameAlpha" type="range" min="0" max="1" step="0.05" value="0.9" style="width:160px"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Background FX (Dual) -->
+          <div class="field">
+            <label>Background FX — Effect A</label>
+            <div class="row">
+              <select id="bgFx">
+                <option value="none" selected>None</option>
+                <option value="hue">Hue Cycle</option>
+                <option value="glitch">Glitch (rate)</option>
+                <option value="snow">Snow</option>
+                <option value="redsnow">Red Snow</option>
+                <option value="rain">Rain</option>
+                <option value="lightning">Lightning</option>
+                <option value="embers">Embers (Fire & Brimstone)</option>
+              
+                <option value="snow-rgb">Snow (RGB)</option>
+                <option value="matrix">Matrix Rain</option>
+                <option value="filmgrain">Film Grain</option></select>
+              <div class="field" style="min-width:220px">
+                <label id="bgFxAmtLabel">Intensity</label>
+                <input id="bgFxAmt" type="range" min="0" max="1" step="0.01" value="0.35" style="width:200px">
+              </div>
+              <div class="field" id="matrixGlyphField" style="min-width:220px; display:none">
+                <label>Matrix Glyph Size</label>
+                <input id="matrixGlyph" type="range" min="10" max="40" step="1" value="18" style="width:200px">
+              </div>
+              <div class="field" id="matrixSpeedField" style="min-width:220px; display:none">
+                <label>Matrix Speed</label>
+                <input id="matrixSpeed" type="range" min="0.01" max="1.5" step="0.01" value="1" style="width:200px">
+              </div>
+              <div class="field" id="matrixColorField" style="min-width:220px; display:none">
+                <label>Matrix Color</label>
+                <input id="matrixColor" type="color" value="#00ff90">
+              </div>
+    
+        
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Background FX — Effect B</label>
+            <div class="row">
+              <select id="bgFx2">
+                <option value="none" selected>None</option>
+                <option value="hue">Hue Cycle</option>
+                <option value="glitch">Glitch (rate)</option>
+                <option value="snow">Snow</option>
+                <option value="redsnow">Red Snow</option>
+                <option value="rain">Rain</option>
+                <option value="lightning">Lightning</option>
+                <option value="embers">Embers (Fire & Brimstone)</option>
+              
+                <option value="snow-rgb">Snow (RGB)</option>
+                <option value="matrix">Matrix Rain</option>
+                <option value="filmgrain">Film Grain</option></select>
+              <div class="field" style="min-width:220px">
+                <label id="bgFx2AmtLabel">Intensity</label>
+                <input id="bgFxAmt2" type="range" min="0" max="1" step="0.01" value="0.00" style="width:200px">
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Canvas / Visual Area -->
+    <div class="stack">
+      <div class="card">
+        <h3>Visualizer</h3>
+        <div class="body stack">
+          
+
+          <div class="grid-under">
+            <div class="card">
+              <h3>Text Inputs</h3>
+              <div class="body stack">
+                <div class="row">
+                  <div class="field" style="flex:1 1 220px"><label>Song Title</label><input id="songTitle" type="text" placeholder="Song title" maxlength="80"></div>
+                  <div class="field" style="flex:1 1 220px"><label>Artist</label><input id="songArtist" type="text" placeholder="Artist" maxlength="80"></div>
+                </div>
+
+                <div class="row" style="align-items:flex-end">
+                  <div class="field">
+                    <label>Watermark Preset</label>
+                    <select id="wmSelect" style="width:180px">
+                      <option value="fenix" selected>Fenix</option>
+                      <option value="aidiy">AiDiY</option>
+                      <option value="aims">AIMS</option>
+                      <option value="customText">Custom Text</option>
+                    </select>
+                  </div>
+                  <div class="field" style="flex:1 1 160px"><label>Main (12)</label><input id="wmMain" type="text" maxlength="12" placeholder="MAIN"></div>
+                  <div class="field" style="flex:1 1 200px"><label>Sub (24)</label><input id="wmSub" type="text" maxlength="24" placeholder="SUBLINE"></div>
+                  <div class="field" id="wmColorField" >
+                    <label>Custom WM Color</label><input id="wmColor" type="color" value="#ff9c2a">
+                  </div>
+                </div>
+
+                <!-- Lyrics controls -->
+                <div class="row">
+                  <div class="field"><label>Lyrics</label>
+                    <select id="lyricsEnable" style="width:120px"><option value="off" selected>Off</option><option value="on">On</option></select>
+                  </div>
+                  <div class="field"><label>Lyric Size</label><input id="lySize" type="number" min="16" max="120" step="2" value="42" style="width:100px"></div>
+                  <div class="field"><label>Base / Progress</label><div class="row"><input id="lyColor" type="color" value="#ffffff"><input id="lyProg" type="color" value="#4da3ff"></div></div>
+                  <div class="field" style="min-width:220px"><label>Lyrics Y</label><input id="lyY" type="range" min="0" max="1" step="0.01" value="0.92" style="width:200px"></div>
+                  <div class="field" style="min-width:220px"><label>Lyrics Font</label>
+                    <select id="lyFont" style="width:220px">
+                      <option value="Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif">Impact / Narrow Bold</option>
+                      <option value="'Segoe UI', Roboto, Arial, sans-serif" selected>UI Sans</option>
+                      <option value="'Courier New', monospace">Monospace</option>
+                      <option value="Georgia, serif">Serif</option>
+                    </select>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+ <!-- Album Art / Logo Overlay (below Lyrics) -->
+            <div class="card" id="logoCard">
+              <h3>Album Art / Logo Overlay</h3>
+              <div class="body stack">
+                <label class="btn">🖼️ Choose logo
+                  <input id="logoFile" type="file" accept="image/*">
+                </label>
+                <div class="field">
+                  <label><input type="checkbox" id="logoEnable" checked> Enable overlay</label>
+                </div>
+                <div class="field">
+                  <label><input type="checkbox" id="logoPulse"> Pulse to beat</label>
+                </div>
+                <div class="field">
+                  <label>Pulse Strength</label>
+                  <input id="logoPulseAmt" type="range" min="0" max="1" step="0.01" value="0.35">
+                </div>
+                <div class="field">
+                  <label>Size</label>
+                  <input id="logoSize" type="range" min="0.1" max="3" step="0.01" value="1">
+                </div>
+                <div class="field">
+                  <label>X (%)</label>
+                  <input id="logoX" type="range" min="0" max="100" step="0.1" value="50">
+                </div>
+                <div class="field">
+                  <label>Y (%)</label>
+                  <input id="logoY" type="range" min="0" max="100" step="0.1" value="50">
+                </div>
+                <div class="field">
+                  <label>Rotation (°)</label>
+                  <input id="logoRot" type="range" min="-180" max="180" step="1" value="0">
+                </div>
+                <div class="field">
+                  <label>Opacity</label>
+                  <input id="logoAlpha" type="range" min="0" max="1" step="0.01" value="1">
+                </div>
+                <div class="field">
+                  <label>Blend</label>
+                  <select id="logoBlend">
+                    <option value="source-over" selected>Normal</option>
+                    <option value="lighter">Add (Lighten)</option>
+                    <option value="multiply">Multiply</option>
+                    <option value="screen">Screen</option>
+                    <option value="overlay">Overlay</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+
+            <div class="card">
+              <h3>Visual Effects</h3>
+              <div class="body stack">
+                <div class="row">
+                  <div class="field">
+                    <label>Visualizer Type</label>
+                    <select id="vizType" style="width:180px">
+                      <option value="bars-v">Bars (vertical)</option>
+                      <option value="bars-h">Bars (horizontal)</option>
+                      <option value="radial">Circular</option>
+                      <option value="wave">Waveform</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label>Color Mode</label>
+                    <div class="row">
+                      <select id="colorMode" style="width:160px">
+                        <option value="solid" selected>Solid</option>
+                        <option value="rainbow">Rainbow</option>
+                        <option value="rgb">RGB Cycle</option>
+                      </select>
+                      <input id="vizColor" type="color" value="#4da3ff">
+                    </div>
+           
+    
+                  </div>
+                  <div class="field"><label>Bar Count</label><input id="barCount" type="number" min="8" max="256" step="1" value="128" style="width:100px"></div>
+<div class="field">
+                    <label><input type="checkbox" id="vizMirrorX"> Mirror X (left ↔ right)</label>
+                  </div>
+                  <div class="field">
+                    <label><input type="checkbox" id="vizMirrorY"> Mirror Y (top ↔ bottom)</label>
+                  </div>
+        
+    
+                </div>
+
+                <div class="row">
+                  <div class="field"><label>Scale</label><input id="scale" type="range" min="0.25" max="3" step="0.05" value="1.2"></div>
+                  <div class="field"><label>Thickness</label><input id="thickness" type="range" min="1" max="36" step="1" value="10"></div>
+                  <div class="field">
+                    <label>Blend Mode</label>
+                    <select id="blendMode" style="width:160px">
+                      <option value="source-over">Normal</option>
+                      <option value="screen">Screen</option>
+                      <option value="lighten">Lighten</option>
+                      <option value="overlay">Overlay</option>
+                      <option value="difference">Difference</option>
+                      <option value="color-dodge">Color Dodge</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="field"><label>Pos X</label><input id="posX" type="range" min="0" max="1" step="0.01" value="0.5"></div>
+                  <div class="field"><label>Pos Y</label><input id="posY" type="range" min="0" max="1" step="0.01" value="0.8"></div>
+                  <div class="field">
+                    <label>Corner</label>
+                    <select id="caps" style="width:140px">
+                      <option value="round">Round</option>
+                      <option value="butt">Square</option>
+                      <option value="square">Extended</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="field"><label>FFT Size</label>
+                    <select id="fftSize" style="width:140px"><option>1024</option><option selected>2048</option><option>4096</option><option>8192</option></select>
+                  </div>
+                  <div class="field"><label>Freq Map Fix</label>
+                    <select id="highFix" style="width:200px">
+                      <option value="none" selected>None</option>
+                      <option value="compress40" selected>Compress last 40%</option>
+                      <option value="mirror40">Mirror last 40%</option>
+                      <option value="boostHighs">Boost highs</option>
+                    </select>
+                  </div>
+                  <div class="field" style="min-width:220px"><label>Region Width</label><input id="regionW" type="range" min="0.2" max="1" step="0.01" value="0.9" style="width:200px"></div>
+                </div>
+
+                <!-- Meter FX -->
+                <div class="row">
+                  <div class="field">
+                    <label>Rotation</label>
+                    <div class="row">
+                      <select id="fxRotate"><option value="off" selected>Off</option><option value="slow">Slow</option><option value="beat">Beat</option></select>
+                      <input id="fxRotateSpeed" type="range" min="-2" max="2" step="0.01" value="0.25" title="Speed" />
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label>Pulse</label>
+                    <div class="row">
+                      <select id="fxPulse"><option value="off" selected>Off</option><option value="gentle">Gentle</option><option value="strong">Strong</option></select>
+                      <input id="fxPulseAmt" type="range" min="0" max="0.6" step="0.01" value="0.2" title="Amount" />
+                    </div>
+                  </div>
+                  <div class="field"><label>Kaleidoscope</label>
+                    <select id="fxKaleido"><option value="off" selected>Off</option><option value="mirror4">Mirror ×4</option><option value="mirror6">Mirror ×6</option><option value="mirror8">Mirror ×8</option></select>
+                  </div>
+                  <div class="field"><label>Glow</label>
+                    <select id="glow" style="width:120px"><option value="0" selected>Off</option><option value="8">Soft</option><option value="16">Strong</option></select>
+                  </div>
+                  <div class="field"><label>Peak Caps</label>
+                    <select id="peaks" style="width:120px"><option value="off" selected>Off</option><option value="on">On</option></select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div><!-- /grid-under -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Help Modal -->
+<div id="guideModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.86);z-index:1000;align-items:center;justify-content:center">
+  <div id="guideContent" style="background:#0f1419;color:#fff;max-width:860px;max-height:80%;overflow:auto;padding:20px;border-radius:8px;border:1px solid #1e2733;position:relative">
+    <button id="closeGuide" class="btn subtle" style="position:absolute;top:10px;right:14px">✕</button>
+    <h2>Visualizer Help</h2>
+    <p>Upload audio & optional images. Preview to play; Render to export WebM + audio. Loudness Target auto-gains; Limiter catches peaks. Frames/FX are optional.</p>
+    <pre style="white-space:pre-wrap;background:#0b0f14;border:1px solid #223041;border-radius:8px;padding:10px">.srt example:
+1
+00:00:10,000 --> 00:00:14,000
+When the night falls, shadows call</pre>
+  </div>
+</div>
+
+<!-- Always-on tiny DOM watermark -->
+
+
+<script>
+
+
+
+/** Shows or hides Matrix-specific controls depending on selected background FX. */
+function updateMatrixFieldVisible(){
+  const show = (bgFx.value==='matrix' || bgFx2.value==='matrix');
+  const f = document.getElementById('matrixGlyphField');
+  if(f){ f.style.display = show ? '' : 'none'; }
+  const f2 = document.getElementById('matrixSpeedField'); if(f2){ f2.style.display = show ? '' : 'none'; }
+  const f3 = document.getElementById('matrixColorField'); if(f3){ f3.style.display = show ? '' : 'none'; }
+}
+
+
+
+// === Background Library Modal (previews + local/server) ===
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  let modal, grid, statusEl;
+
+  function setStatus(msg){ if(statusEl) statusEl.textContent = msg||''; }
+  function clearGrid(){ if(grid) grid.innerHTML=''; }
+
+
+
+  /** Adds an image thumbnail to the background library grid and wires click to load it into the slideshow. */
+  function addThumb(src, name){
+    const div = document.createElement('div'); div.className='bg-thumb';
+    const img = document.createElement('img'); img.loading='lazy'; img.alt=name||''; img.src=src;
+    const cap = document.createElement('div'); cap.className='name'; cap.textContent = name||src.split('/').pop();
+    div.appendChild(img); div.appendChild(cap);
+    div.addEventListener('click', async ()=>{
+      try{
+        let bmp;
+        if(window.createImageBitmap && !src.startsWith('blob:')){
+          const r = await fetch(src, {cache:'no-store'});
+          const b = await r.blob();
+          bmp = await createImageBitmap(b);
+        }else{
+          // blob: or fallback image element
+          const image = new Image();
+          await new Promise((res,rej)=>{ image.onload=()=>res(); image.onerror=rej; image.src=src; });
+          bmp = image;
+        }
+        // Push into images[] the same way as file upload
+        window.images = window.images || [];
+        images.push({bmp, name: name || src.split('/').pop()});
+        if(window.currentImageIndex >= images.length) window.currentImageIndex = 0;
+        if(typeof lastSlideSwitch !== 'undefined'){ lastSlideSwitch = performance.now(); }
+        if(typeof updateImgList === 'function') updateImgList();
+        if(window.audioBuffer) document.getElementById('recordBtn').disabled = false;
+        if(window.drawFrame) requestAnimationFrame(()=>drawFrame());
+        if(modal?.open) modal.close();
+      }catch(e){
+        console.error('Failed to add background from library', e);
+      }
+    });
+    grid.appendChild(div);
+  }
+
+  async function loadFromServer(){
+    clearGrid(); setStatus('Loading from /images …');
+    const exts = ['.png','.jpg','.jpeg','.webp','.gif','.bmp'];
+    let entries = [];
+    try{
+      const r = await fetch('images/manifest.json', {cache:'no-store'});
+      if(r.ok){
+        const data = await r.json();
+        if(Array.isArray(data)) entries = data;
+        else if(Array.isArray(data.images)) entries = data.images;
+      }
+    }catch(e){}
+    if(entries.length === 0){
+      try{
+        const r = await fetch('images/', {cache:'no-store'});
+        if(r.ok){
+          const txt = await r.text();
+          const links = Array.from(txt.matchAll(/href\s*=\s*\"([^\"]+)\"/gi)).map(m=>m[1]);
+          entries = links.filter(h=> exts.some(ext=>h.toLowerCase().endsWith(ext)) );
+        }
+      }catch(e){}
+    }
+    if(entries.length === 0){
+      setStatus('No images found under /images. Add manifest.json or enable directory index.');
+      return;
+    }
+    setStatus('');
+    for(const p of entries){
+      const path = p.startsWith('images/') ? p : ('images/' + p.replace(/^\/*/,''));
+      addThumb(path, path.split('/').pop());
+    }
+  }
+
+      document.addEventListener('DOMContentLoaded', ()=>{ updateMatrixFieldVisible();
+    modal = $('bgLibModal'); grid = $('bgGrid'); statusEl = $('bgLibStatus');
+    const openBtn = $('openBgLib');
+    const pickBtn = null; // removed local folder option
+    const servBtn = $('bgLibLoadServer');
+    if(openBtn && modal){ openBtn.addEventListener('click', ()=> { modal.showModal(); loadFromServer(); }); }
+    // local folder option removed
+    if(servBtn) servBtn.addEventListener('click', loadFromServer);
+  });
+})();
+
+
+
+// === Logo Overlay (standalone; below Lyrics) ===
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const st = {
+    bmp: null,
+    enable: true,
+    pulse: false,
+    pulseAmt: 0.35,
+    size: 1.0,
+    x: 50,
+    y: 50,
+    rot: 0,
+    alpha: 1,
+    blend: 'source-over',
+    smooth: 0
+  };
+  function uiSync(){
+    st.enable = !!$('logoEnable')?.checked;
+    st.pulse  = !!$('logoPulse')?.checked;
+    st.pulseAmt = parseFloat($('logoPulseAmt')?.value || '0.35');
+    st.size   = parseFloat($('logoSize')?.value || '1');
+    st.x      = parseFloat($('logoX')?.value || '50');
+    st.y      = parseFloat($('logoY')?.value || '50');
+    st.rot    = parseFloat($('logoRot')?.value || '0');
+    st.alpha  = parseFloat($('logoAlpha')?.value || '1');
+    st.blend  = $('logoBlend')?.value || 'source-over';
+  }
+  function attachUI(){
+    ['logoEnable','logoPulse','logoPulseAmt','logoSize','logoX','logoY','logoRot','logoAlpha','logoBlend'].forEach(id=>{
+      const el = $(id); if(!el) return;
+      el.addEventListener('input', ()=>{ uiSync(); if(window.drawFrame){ requestAnimationFrame(()=>drawFrame()); } });
+      el.addEventListener('change', ()=>{ uiSync(); if(window.drawFrame){ requestAnimationFrame(()=>drawFrame()); } });
+    });
+    const file = $('logoFile');
+    if(file){
+      file.addEventListener('change', async ()=>{
+        const f = file.files && file.files[0]; if(!f) return;
+        try{
+          if (window.createImageBitmap){
+            st.bmp = await createImageBitmap(f);
+          }else{
+            const url = URL.createObjectURL(f);
+            const img = new Image();
+            await new Promise((res,rej)=>{ img.onload=()=>res(); img.onerror=rej; img.src=url; });
+            st.bmp = img;
+          }
+          uiSync();
+          if(window.drawFrame){ requestAnimationFrame(()=>drawFrame()); }
+        }catch(e){ console.error('Logo load failed', e); }
+      });
+    }
+    uiSync();
+  }
+  // robust analyser bass level
+
+
+  /** Estimates bass energy from the analyser for beat-reactive logo pulsing. */  function __logo_getBassLevel(){
+    try{
+      const a = window.analyser || window.analyserNode || window.masterAnalyser || window.freqAnalyser || null;
+      if(!a || !a.getByteFrequencyData) return 0;
+      const bins = Math.min(128, a.frequencyBinCount||2048);
+      const arr = new Uint8Array(bins);
+      a.getByteFrequencyData(arr);
+      let n = Math.min(12, arr.length), sum=0;
+      for(let i=0;i<n;i++) sum += arr[i];
+      return sum/(n*255);
+    }catch(e){ return 0; }
+  }
+  // draw function
+
+
+  /** Draws the user-selected logo or album art with position, size, rotation, blend mode, and optional beat pulse. */  window.drawLogoOverlay = function(ctx){
+    if(!st.enable || !st.bmp) return;
+    const w = ctx.canvas.width, h = ctx.canvas.height;
+    let pulse = 1.0;
+    if(st.pulse){
+      const react = (typeof averageFreq==='function') ? averageFreq() : 0;
+      const amt = (st.pulseAmt||0.35);
+      const base = 0.20; // slightly stronger base
+      const eff  = amt * 2.0; // double the slider's effect at max
+      const above = Math.max(0, react - 0.20);
+      pulse = 1.0 + (base + eff) * above;
+    }
+    const base = Math.min(w,h) * 0.30 * st.size * pulse;
+    const cx = (st.x/100) * w;
+    const cy = (st.y/100) * h;
+    ctx.save();
+    const prevAlpha = ctx.globalAlpha, prevComp = ctx.globalCompositeOperation;
+    ctx.globalAlpha = Math.max(0, Math.min(1, st.alpha));
+    ctx.globalCompositeOperation = st.blend;
+    ctx.translate(cx, cy);
+    ctx.rotate(st.rot * Math.PI/180);
+    const img = st.bmp;
+    const iw = img.width || base, ih = img.height || base;
+    const scale = base / Math.max(iw, ih);
+    const dw = iw*scale, dh = ih*scale;
+    ctx.drawImage(img, -dw/2, -dh/2, dw, dh);
+    ctx.globalAlpha = prevAlpha; ctx.globalCompositeOperation = prevComp;
+    ctx.restore();
+  };
+  document.addEventListener('DOMContentLoaded', attachUI);
+})();
+
+
+
+// Force color field visible regardless of preset (surgical, safe)
+document.addEventListener('DOMContentLoaded', function(){
+  try{
+    var el = document.getElementById('wmColorField');
+    if(el){ el.style.display = ''; el.hidden = false; }
+  }catch(e){}
+});
+
+
+/* ===== Crash guard: surface JS errors in the UI ===== */
+window.addEventListener('error', e => { const s=document.getElementById('status'); if(s) s.textContent = 'Error: ' + (e.message||e); });
+window.addEventListener('unhandledrejection', e => { const s=document.getElementById('status'); if(s) s.textContent = 'Error: ' + (e.reason?.message||e.reason||e); });
+
+/* ===== Globals ===== */
+let audioCtx, analyser, dataArray, freqArray, srcNode=null, dest;
+let audioBuffer=null, images=[], currentImageIndex=0, lastSlideSwitch=0;
+let playing=false, previewRAF=0, recorder=null, recordedChunks=[];
+let isRendering=false; // debounce render
+let eqLow, eqMid, eqHigh, preGain, limNode, gainNode;
+let peaksArray = [];
+// Lyrics
+let srtCues = []; // {start,end,text}
+// BG transitions
+let prevImage=null, activeTransition='fade', transitionStart=0;
+const transitionDur = 900; // ms
+const transitions = ['fade','wipe','drop','pan','push','zoom','spin','morph'];
+// Title card
+const TITLE_CARD_SECONDS = 5;
+// Canvas
+const cnv=document.getElementById('canvas'), ctx=cnv.getContext('2d');
+// Offscreen for FX
+const off = document.createElement('canvas'), offCtx = off.getContext('2d');
+// Particles
+let snowParticles = [], rainDrops = [];
+let redSnow = false;
+let emberParticles = [];
+let lightningBolts = [];
+// Hue cycle phase
+let huePhase = 0;
+
+/* ===== Controls ===== */
+const fileInput=document.getElementById('fileInput');
+const imageInput=document.getElementById('imageInput');
+const imgListEl=document.getElementById('imgList');
+const srtInput=document.getElementById('srtInput');
+const statusEl=document.getElementById('status');
+const previewBtn=document.getElementById('previewBtn');
+const stopPreviewBtn=document.getElementById('stopPreviewBtn');
+const recordBtn=document.getElementById('recordBtn');
+const downloadLink=document.getElementById('downloadLink');
+const resetFxBtn=document.getElementById('resetFxBtn');
+
+const songTitle=document.getElementById('songTitle');
+const songArtist=document.getElementById('songArtist');
+
+const vizType=document.getElementById('vizType');
+const colorMode=document.getElementById('colorMode');
+const vizColor=document.getElementById('vizColor');
+const barCount=document.getElementById('barCount');
+const regionW=document.getElementById('regionW');
+const scale=document.getElementById('scale');
+const blendMode=document.getElementById('blendMode');
+const posX=document.getElementById('posX');
+const posY=document.getElementById('posY');
+const thickness=document.getElementById('thickness');
+const caps=document.getElementById('caps');
+const fftSizeSel=document.getElementById('fftSize');
+const slideSec=document.getElementById('slideSec');
+const highFix=document.getElementById('highFix');
+const glowSel=document.getElementById('glow');
+const peaksSel=document.getElementById('peaks');
+
+const bgColor=document.getElementById('bgColor');
+const bgGreen=document.getElementById('bgGreen');
+const transitionMode=document.getElementById('transitionMode');
+
+const frameStyle=document.getElementById('frameStyle');
+const frameColor=document.getElementById('frameColor');
+const frameAlpha=document.getElementById('frameAlpha');
+
+// Background FX (dual)
+const bgFx=document.getElementById('bgFx');
+const bgFxAmt=document.getElementById('bgFxAmt');
+const bgFxAmtLabel=document.getElementById('bgFxAmtLabel');
+const bgFx2=document.getElementById('bgFx2');
+const bgFxAmt2=document.getElementById('bgFxAmt2');
+const bgFx2AmtLabel=document.getElementById('bgFx2AmtLabel');
+
+// Lyrics controls
+const lyricsEnable=document.getElementById('lyricsEnable');
+const lyFont=document.getElementById('lyFont');
+const lySize=document.getElementById('lySize');
+const lyColor=document.getElementById('lyColor');
+const lyProg=document.getElementById('lyProg');
+const lyY=document.getElementById('lyY');
+
+// Watermark controls
+const wmSelect=document.getElementById('wmSelect');
+const wmMain=document.getElementById('wmMain');
+const wmSub=document.getElementById('wmSub');
+const wmColor=document.getElementById('wmColor');
+const wmColorField=document.getElementById('wmColorField');
+
+/* ===== Help modal ===== */
+const guideModal = document.getElementById('guideModal');
+document.getElementById('helpBtn').onclick = ()=> guideModal.style.display = 'flex';
+document.getElementById('closeGuide').onclick = ()=> guideModal.style.display = 'none';
+guideModal.addEventListener('click', (e)=>{ if(e.target === guideModal) guideModal.style.display='none'; });
+document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') guideModal.style.display='none'; });
+
+/* ===== Clear / Reset ===== */
+document.getElementById('clearBtn').onclick = () => {
+  stopPreview();
+  audioBuffer=null; images=[]; currentImageIndex=0; srtCues=[]; prevImage=null;
+  snowParticles=[]; rainDrops=[]; emberParticles=[]; lightningBolts=[];
+  updateImgList(); ctx.clearRect(0,0,cnv.width,cnv.height);
+  status('Cleared. Load audio + optional images + optional .srt.');
+  previewBtn.disabled = true; recordBtn.disabled = true;
+  downloadLink.style.display='none'; downloadLink.removeAttribute('href');
+};
+resetFxBtn.onclick = ()=>{
+  fxRotate.value='off'; fxRotateSpeed.value=0.25;
+  fxPulse.value='off'; fxPulseAmt.value=0.2;
+  fxKaleido.value='off';
+  colorMode.value='solid'; vizColor.value='#4da3ff'; blendMode.value='source-over';
+  glowSel.value='0'; peaksSel.value='off';
+  posX.value=0.5; posY.value=0.8; scale.value=1.2; thickness.value=10; regionW.value=0.9;
+  frameStyle.value='none'; frameAlpha.value=0.9; frameColor.value='#ffffff';
+  bgFx.value='none'; bgFxAmt.value=0.35;
+  bgFx2.value='none'; bgFxAmt2.value=0.00;
+  updateBgFxLabel(bgFx, bgFxAmtLabel);
+  updateBgFxLabel(bgFx2, bgFx2AmtLabel);
+};
+
+/* ===== Audio Graph ===== */
+
+
+/** Initializes Web Audio graph, analyser, EQ filters, limiter, and media stream destination for recording. */function ensureAudio(){
+  if(!audioCtx){
+    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = parseInt(fftSizeSel.value,10);
+    analyser.smoothingTimeConstant = 0.7;
+    analyser.minDecibels = -90;
+    analyser.maxDecibels = -10;
+
+    // EQ
+    eqLow  = audioCtx.createBiquadFilter();  eqLow.type  = 'lowshelf';  eqLow.frequency.value = 200;
+    eqMid  = audioCtx.createBiquadFilter();  eqMid.type  = 'peaking';   eqMid.frequency.value = 1000; eqMid.Q.value = 1.0;
+    eqHigh = audioCtx.createBiquadFilter();  eqHigh.type = 'highshelf'; eqHigh.frequency.value = 4000;
+
+    // Pre-gain
+    preGain = audioCtx.createGain(); preGain.gain.value = 1;
+
+    // Limiter
+    limNode = audioCtx.createDynamicsCompressor();
+    limNode.knee.value = 0; limNode.ratio.value = 20; limNode.attack.value = 0.002;
+    limNode.threshold.value = parseFloat(document.getElementById('limThr').value);
+    limNode.release.value   = parseFloat(document.getElementById('limRel').value);
+
+    // Output
+    gainNode = audioCtx.createGain();
+    dest = audioCtx.createMediaStreamDestination();
+
+    analyser.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    gainNode.connect(dest);
+
+    dataArray = new Uint8Array(analyser.fftSize);
+    freqArray = new Uint8Array(analyser.frequencyBinCount);
+
+    // EQ sliders
+    const setGain = (node, val)=> node.gain.value = parseFloat(val);
+    document.getElementById('eqLow').oninput  = e=> setGain(eqLow,  e.target.value);
+    document.getElementById('eqMid').oninput  = e=> setGain(eqMid,  e.target.value);
+    document.getElementById('eqHigh').oninput = e=> setGain(eqHigh, e.target.value);
+    setGain(eqLow,  document.getElementById('eqLow').value);
+    setGain(eqMid,  document.getElementById('eqMid').value);
+    setGain(eqHigh, document.getElementById('eqHigh').value);
+  }
+}
+fftSizeSel.addEventListener('change',()=>{ if(!analyser) return; analyser.fftSize=parseInt(fftSizeSel.value,10); dataArray=new Uint8Array(analyser.fftSize); freqArray=new Uint8Array(analyser.frequencyBinCount); });
+// ===== Loudness & Limiter UI bindings
+document.getElementById('loudTarget').addEventListener('input', ()=>{ document.getElementById('loudTargetVal').textContent = document.getElementById('loudTarget').value + ' dBFS'; applyLoudnessTarget(); });
+document.getElementById('loudAuto').addEventListener('change', applyLoudnessTarget);
+document.getElementById('limThr').addEventListener('input', ()=>{ document.getElementById('limThrVal').textContent = document.getElementById('limThr').value + ' dBFS'; if(limNode) limNode.threshold.value=parseFloat(document.getElementById('limThr').value); });
+document.getElementById('limRel').addEventListener('input', ()=>{ document.getElementById('limRelVal').textContent = document.getElementById('limRel').value + ' s'; if(limNode) limNode.release.value=parseFloat(document.getElementById('limRel').value); });
+
+
+
+
+/** Connects EQ, pre-gain, optional limiter, and analyser based on current settings. */
+
+function wireGraph(){
+  [eqLow, eqMid, eqHigh, preGain, limNode].forEach(n=>{ try{ n.disconnect(); }catch{} });
+  eqLow.connect(eqMid);
+  eqMid.connect(eqHigh);
+  eqHigh.connect(preGain);
+  if(document.getElementById('limitEnable').value === 'on'){ preGain.connect(limNode); limNode.connect(analyser); }
+  else { preGain.connect(analyser); }
+}
+
+/* ===== Loudness helpers ===== */
+
+
+/** Converts a linear RMS value to dBFS for loudness readouts. */function dbfsFromRMS(rms){ return 20*Math.log10(Math.max(1e-8, rms)); }
+
+
+/** Computes a rough stereo RMS from the decoded AudioBuffer for auto-gain guidance. */function estimateRMSFromBuffer(buf){
+  const ch0 = buf.getChannelData(0);
+  const ch1 = buf.numberOfChannels>1 ? buf.getChannelData(1) : null;
+  let sum=0, n=ch0.length;
+  for(let i=0;i<n;i++){ const s = ch1 ? 0.5*(ch0[i]+ch1[i]) : ch0[i]; sum += s*s; }
+  return Math.sqrt(sum/Math.max(1,n));
+}
+
+/* ===== Uploads ===== */
+fileInput.addEventListener('change', async ()=>{
+  const f=fileInput.files?.[0]; if(!f) return; ensureAudio();
+  try{
+    const buf=await f.arrayBuffer(); audioBuffer=await audioCtx.decodeAudioData(buf);
+    status(`Loaded audio: ${f.name}`);
+    const rms = estimateRMSFromBuffer(audioBuffer);
+    const dbfs = dbfsFromRMS(rms);
+    document.getElementById('loudReadout').textContent = `Estimated source loudness: ${dbfs.toFixed(1)} dBFS`;
+    applyLoudnessTarget(); wireGraph();
+    previewBtn.disabled=false;
+    // ✅ Allow rendering with blank/colored BG (no images required)
+    recordBtn.disabled = false;
+  }catch(e){ console.error(e); status('Failed to decode audio.'); }
+});
+
+imageInput.addEventListener('change', async ()=>{
+  const files=Array.from(imageInput.files||[]); if(!files.length) return;
+  const loaded=[];
+  for(const f of files){ const bmp=await loadImageBitmapSafe(f); loaded.push({bmp,name:f.name}); }
+  images = images.concat(loaded);
+  if(currentImageIndex>=images.length) currentImageIndex=0;
+  lastSlideSwitch=performance.now();
+  status(`Loaded ${files.length} image${files.length>1?'s':''}.`);
+  updateImgList();
+  // Keep render enabled if audio is present
+  if(audioBuffer) recordBtn.disabled = false;
+});
+
+async function loadImageBitmapSafe(file){
+  try{
+    if('createImageBitmap' in window){
+      return await createImageBitmap(await fileToBlob(file));
+    }
+  }catch{}
+  // Fallback for older Safari
+  return await new Promise((res,rej)=>{
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = ()=>{ URL.revokeObjectURL(url); res(img); };
+    img.onerror = (e)=> rej(e);
+    img.src = url;
+  });
+}
+
+srtInput.addEventListener('change', async ()=>{
+  const f=srtInput.files?.[0]; if(!f) return; const text=await f.text(); srtCues=parseSRT(text);
+  status(`Loaded ${srtCues.length} lyric line${srtCues.length!==1?'s':''}.`);
+});
+
+
+
+/** Reads a File to a Blob via FileReader for createImageBitmap compatibility. */
+function fileToBlob(file){ return new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(new Blob([r.result])); r.readAsArrayBuffer(file); }); }
+
+/* ===== Slideshow reset ===== */
+
+
+/** Resets slideshow indices and transition timers before playback or render. */function resetSlideshow(){ currentImageIndex = 0; prevImage = null; lastSlideSwitch = performance.now(); transitionStart = lastSlideSwitch; activeTransition = 'fade'; }
+
+/* ===== Playback ===== */
+let startTime=0, offsetAtStart=0;
+
+
+
+/** Creates and starts a BufferSource at the requested offset and routes it through the processing graph. */
+function makeSource(startAt=0){
+  if(!audioBuffer) return null;
+  const src=audioCtx.createBufferSource();
+  src.buffer=audioBuffer;
+  src.connect(eqLow);
+  wireGraph();
+  const t = Math.max(0, Math.min(startAt, audioBuffer.duration-0.001));
+  src.start(0, t);
+  return src;
+}
+
+
+
+/** Starts realtime preview playback and kicks off the draw loop. */
+function playPreview(){
+  if(!audioBuffer) return; ensureAudio();
+  stopPreview(); resetSlideshow();
+  srcNode=makeSource(offsetAtStart); playing=true; startTime=audioCtx.currentTime;
+  stopPreviewBtn.disabled=false; previewBtn.disabled=true; recordBtn.disabled=true; // lock during preview recordBtn.disabled=true;
+  peaksArray=Array(parseInt(barCount.value)||128).fill(0);
+  srcNode.onended = () => { if(playing) stopPreview(); };
+  loopDraw();
+}
+
+
+/** Stops preview playback and UI timers, resets states, and re-enables controls. */function stopPreview(){
+  if(srcNode){ try{srcNode.stop();}catch(_){} srcNode.disconnect(); srcNode=null; }
+  playing=false; cancelAnimationFrame(previewRAF);
+  stopPreviewBtn.disabled=true; previewBtn.disabled=!audioBuffer; recordBtn.disabled=!audioBuffer; // unlock after preview
+  // Keep render available when audio is loaded
+  recordBtn.disabled=!audioBuffer;
+  offsetAtStart=0; resetSlideshow();
+}
+previewBtn.onclick=async()=>{ ensureAudio(); if(audioCtx.state!=='running'){ try{await audioCtx.resume();}catch{} } playPreview(); };
+stopPreviewBtn.onclick=()=> stopPreview();
+
+/* ===== Recording ===== */
+
+recordBtn.onclick = async () => {
+  if (playing) { return; } // safety guard while preview is active
+if (isRendering) return;
+  if (!audioBuffer) { status('Need audio to render.'); return; }
+  stopPreview(); // stop preview if running
+  isRendering = true;
+  ensureAudio(); try{await audioCtx.resume();}catch{};
+  resetSlideshow();
+
+  const fps=60; const canvasStream=cnv.captureStream(fps); const mix=new MediaStream();
+  const v=canvasStream.getVideoTracks()[0]; if(v) mix.addTrack(v);
+  const a=dest.stream.getAudioTracks()[0]; if(a) mix.addTrack(a);
+
+  recordedChunks.length=0;
+  const opts={ mimeType:'video/webm;codecs=vp9,opus', videoBitsPerSecond:8_000_000, audioBitsPerSecond:192_000 };
+  recorder=new MediaRecorder(mix, opts);
+  recorder.ondataavailable=e=>{ if(e.data && e.data.size) recordedChunks.push(e.data); };
+  recorder.onstop=()=>{
+    const blob=new Blob(recordedChunks,{type:'video/webm'});
+    const url=URL.createObjectURL(blob);
+    downloadLink.href=url; downloadLink.download=`visualizer_${Date.now()}.webm`;
+    downloadLink.style.display='inline-flex';
+    status('Render complete.');
+    stopPreview();
+    recordBtn.disabled = !audioBuffer;
+    isRendering=false;
+  };
+  recorder.onerror = ()=>{ isRendering=false; status('Render failed.'); };
+
+  srcNode=makeSource(0);
+  playing=true; startTime=audioCtx.currentTime; offsetAtStart=0;
+  status('Rendering…'); recordBtn.disabled = true; downloadLink.style.display='none';
+  try{ recorder.start(100); }catch(e){ isRendering=false; status('Recorder error.'); return; }
+
+  const total=audioBuffer.duration;
+  const tick=()=>{ drawFrame(); const t=audioCtx.currentTime-startTime;
+    if(t<total-0.02 && recorder && recorder.state==='recording'){ requestAnimationFrame(tick);
+    } else { try{srcNode.stop();}catch(_){ } if(recorder && recorder.state!=='inactive') recorder.stop(); } };
+  requestAnimationFrame(tick);
+}
+
+/* ===== Draw helpers ===== */
+
+
+/** Animation scheduler for preview mode that continuously calls drawFrame while playing. */function loopDraw(){ const step=()=>{ if(!playing) return; drawFrame(); previewRAF=requestAnimationFrame(step); }; previewRAF=requestAnimationFrame(step); }
+
+
+
+/** Applies optional frequency mapping to emphasize highs or compress the top end for bar distribution. */
+function mapT(t){
+  const mode=highFix.value;
+  if(mode==='compress40'){ return t*0.6; }
+  if(mode==='mirror40'){ return (t>0.6)? (0.6 - (t-0.6)) : t; }
+  if(mode==='boostHighs'){ return Math.pow(t, 0.8); }
+  return t;
+}
+
+
+/** Returns the current transition or a random one if the mode is set to random. */function pickTransition(){ const m = transitionMode.value; return m==='random' ? (transitions[(Math.random()*transitions.length)|0] || 'fade') : m; }
+
+/* ===== Background (images or solid) ===== */
+
+
+
+/** Renders background: solid color, single image cover, or multi-image slideshow with animated transitions. */
+function drawBackground(w,h){
+  // no images: fill color
+  if(!images.length){
+    ctx.globalCompositeOperation='source-over';
+    ctx.fillStyle = bgColor.value || '#000';
+    ctx.fillRect(0,0,w,h);
+    return;
+  }
+  // exactly one image: static
+  if(images.length===1){
+    const bg=images[0].bmp;
+    const rImg=bg.width/bg.height, rC=w/h;
+    let dw,dh; if(rImg>rC){ dh=h; dw=dh*rImg; } else { dw=w; dh=dw/rImg; }
+    const dx=(w-dw)/2, dy=(h-dh)/2;
+    ctx.save(); ctx.globalCompositeOperation='source-over'; ctx.globalAlpha=1;
+    ctx.drawImage(bg,dx,dy,dw,dh);
+    ctx.restore();
+    return;
+  }
+  // slideshow transitions for multiple images
+  const now=performance.now(); const sec=Math.max(1,parseFloat(slideSec.value||'8'));
+  if(now - lastSlideSwitch > sec*1000){
+    prevImage=images[currentImageIndex]?.bmp||null;
+    currentImageIndex=(currentImageIndex+1)%images.length;
+    lastSlideSwitch=now; transitionStart=now; activeTransition=pickTransition();
+  }
+  const bg=images[currentImageIndex]?.bmp;
+  if(!bg){ ctx.fillStyle=bgColor.value||'#000'; ctx.fillRect(0,0,w,h); return; }
+  const progress=Math.min(1,(now - transitionStart)/transitionDur);
+  const transitioning=!!prevImage && progress<1;
+
+  function drawCover(img,alpha=1,opts={}){
+    const {offsetX=0,offsetY=0,scale=1,wipeFrac=1,angle=0,blur=0}=opts;
+    const rImg=img.width/img.height, rC=w/h;
+    let dw,dh; if(rImg>rC){ dh=h*scale; dw=dh*rImg; } else { dw=w*scale; dh=dw/rImg; }
+    const dx=((w-dw)/2)+offsetX, dy=((h-dh)/2)+offsetY;
+
+    ctx.save(); ctx.globalCompositeOperation='source-over'; ctx.globalAlpha=alpha;
+    if(wipeFrac<1){ ctx.beginPath(); ctx.rect(0,0,w*wipeFrac,h); ctx.clip(); }
+    if(blur>0){ ctx.filter=`blur(${blur}px)`; }
+    if(angle!==0){ ctx.translate(w/2,h/2); ctx.rotate(angle); ctx.drawImage(img,-dw/2+offsetX,-dh/2+offsetY,dw,dh); }
+    else{ ctx.drawImage(img,dx,dy,dw,dh); }
+    ctx.filter='none';
+    ctx.restore();
+  }
+
+  if(!transitioning){ drawCover(bg,1); return; }
+  switch(activeTransition){
+    case 'fade': drawCover(prevImage,1 - progress); drawCover(bg,progress); break;
+    case 'wipe': drawCover(prevImage,1); drawCover(bg,1,{wipeFrac:progress}); break;
+    case 'push': { const offx=(1-progress)*w; drawCover(prevImage,1,{offsetX:(w - offx)}); drawCover(bg,1,{offsetX:-offx}); break; }
+    case 'drop': drawCover(prevImage,1 - progress*0.6,{offsetY:0}); drawCover(bg,1,{offsetY:(1-progress)*-h*0.15}); break;
+    case 'pan': { const sPrev=1 + progress*0.05, sNew=1.05 - progress*0.05; const offX=Math.sin(progress*Math.PI)*w*0.03;
+      drawCover(prevImage,1 - progress,{offsetX:offX,scale:sPrev}); drawCover(bg,progress,{offsetX:-offX,scale:sNew}); break; }
+    case 'zoom': drawCover(prevImage,1 - progress,{scale:1 + progress*0.1}); drawCover(bg,progress,{scale:0.9 + progress*0.1}); break;
+    case 'spin': drawCover(prevImage,1 - progress,{angle:progress * 0.6*Math.PI}); drawCover(bg,progress,{angle:(1-progress)*-0.6*Math.PI}); break;
+    case 'morph': drawCover(prevImage,1 - progress,{blur:progress * 10}); drawCover(bg,progress,{blur:(1-progress)*10}); break;
+    default: drawCover(prevImage,1 - progress); drawCover(bg,progress); break;
+  }
+}
+
+  /* ===== Background FX (Dual) ===== */
+function labelForMode(m){
+  if(m==='hue') return 'Cycle Speed';
+  if(m==='glitch') return 'Glitch Rate';
+  if(m==='snow' || m==='rain' || m==='redsnow' || m==='embers' || m==='lightning' || m==='matrix') return 'Density';
+  return 'Intensity';
+}
+
+
+/** Updates the label text for FX amount based on the chosen FX mode. */function updateBgFxLabel(selEl, labelEl){ labelEl.textContent = labelForMode(selEl.value); }
+
+bgFx.addEventListener('change', ()=>{ updateMatrixFieldVisible();
+  updateBgFxLabel(bgFx, bgFxAmtLabel);
+  if(bgFx.value==='snow' || bgFx.value==='redsnow' || bgFx.value==='snow-rgb') { redSnow = (bgFx.value==='redsnow'); initSnow(); }
+  if(bgFx.value==='rain') initRain();
+  if(bgFx.value==='embers') initEmbers();
+  if(bgFx.value==='lightning') initLightning();
+});
+bgFx2.addEventListener('change', ()=>{ updateMatrixFieldVisible();
+  updateBgFxLabel(bgFx2, bgFx2AmtLabel);
+  if(bgFx2.value==='snow' || bgFx2.value==='redsnow' || bgFx2.value==='snow-rgb') { redSnow = (bgFx2.value==='redsnow'); initSnow(); }
+  if(bgFx2.value==='rain') initRain();
+  if(bgFx2.value==='embers') initEmbers();
+  if(bgFx2.value==='lightning') initLightning();
+});
+
+
+
+/** Applies two background FX layers in sequence to the composed frame. */
+function applyBackgroundFXAll(w,h){
+  applyBackgroundFXOne(bgFx.value, parseFloat(bgFxAmt.value||'0'), w,h);
+  applyBackgroundFXOne(bgFx2.value, parseFloat(bgFxAmt2.value||'0'), w,h);
+}
+
+
+
+/** Applies a single FX mode (hue, glitch, snow, rain, embers, lightning, matrix, filmgrain) to the frame. */
+function applyBackgroundFXOne(mode, amt, w, h){
+  if(!mode || mode==='none' || amt<=0) return;
+
+  if(mode==='hue'){
+    const speed = 1.5 * amt;
+    const dt = 1/60;
+    huePhase = (huePhase + speed*dt) % 1;
+    const deg = huePhase * 360;
+    off.width = w; off.height = h; offCtx.clearRect(0,0,w,h); offCtx.drawImage(cnv, 0, 0);
+    ctx.save(); ctx.filter = `hue-rotate(${deg}deg) saturate(1.1)`; ctx.globalCompositeOperation='source-over'; ctx.drawImage(off, 0, 0); ctx.filter='none'; ctx.restore();
+  }
+  else if(mode==='glitch'){
+    const p = amt * 0.15;
+    if(Math.random() < p){
+      off.width = w; off.height = h; offCtx.clearRect(0,0,w,h); offCtx.drawImage(cnv, 0, 0);
+      ctx.save(); ctx.globalCompositeOperation='source-over'; ctx.drawImage(off, 0, 0);
+      const slices = 3 + Math.floor(5*Math.random());
+      for(let i=0;i<slices;i++){
+        const sh = Math.max(2, Math.floor((h/120)*(1+Math.random()*6)));
+        const sy = Math.floor(Math.random()*(h-sh));
+        const dx = (Math.random()<0.5?-1:1) * Math.floor(5 + 25*Math.random());
+        ctx.drawImage(off, 0, sy, w, sh, dx, sy, w, sh);
+      }
+      ctx.restore();
+    }
+  }
+  else if(mode==='snow' || mode==='redsnow'){ drawSnow(w,h, amt, mode==='redsnow'); }
+  else if(mode==='snow-rgb'){ drawSnowRGB(w,h, amt); }
+  else if(mode==='rain'){ drawRain(w,h, amt); }
+  else if(mode==='embers'){ drawEmbers(w,h, amt); }
+  else if(mode==='lightning'){ drawLightning(w,h, amt); }
+  else if(mode==='matrix'){ drawMatrix(w,h, amt); }
+  else if(mode==='filmgrain'){ drawFilmGrain(w,h, amt); }
+}
+
+
+
+/* ===== Film Grain ===== */
+let _grainCanvas = null, _grainCtx = null, _grainW = 0, _grainH = 0;
+function _ensureGrain(w,h){
+  if(!_grainCanvas || _grainW!==w || _grainH!==h){
+    _grainCanvas = document.createElement('canvas');
+    _grainCanvas.width = _grainW = w;
+    _grainCanvas.height = _grainH = h;
+    _grainCtx = _grainCanvas.getContext('2d', {willReadFrequently: true});
+  }
+}
+
+
+/** Overlays procedural film grain using an offscreen canvas for a textured look. */function drawFilmGrain(w,h, amt){
+  // amt ~ intensity from your FX amount slider (0..1-ish)
+  _ensureGrain(w,h);
+  const g = _grainCtx;
+  // Fill with noise; use smaller sample to keep it faster
+  const imgData = g.createImageData(w, h);
+  const data = imgData.data;
+  // Grain strength scales with amt; base a small constant so it's visible
+  const strength = Math.min(0.5, 0.12 + amt*0.38);
+  for (let i = 0; i < data.length; i += 4) {
+    // centered noise around grey, +/- strength*255
+    const n = (Math.random() - 0.5) * 2; // -1..1
+    const v = 127 + Math.floor(n * 255 * strength);
+    data[i] = data[i+1] = data[i+2] = v;
+    data[i+3] = 255;
+  }
+  g.putImageData(imgData, 0, 0);
+  // Composite over with chosen opacity (your global bg FX opacity pipeline handles overall opacity)
+  ctx.save();
+  ctx.globalCompositeOperation = 'overlay'; // gives a filmic contrast; could be 'soft-light' or 'multiply'
+  ctx.drawImage(_grainCanvas, 0, 0);
+  ctx.restore();
+}
+/* ===== RGB Snow & Matrix Rain ===== */
+let snowHuePhase = 0;
+
+
+/** Draws multicolor snow particles that gently drift with wind and screen blend. */function drawSnowRGB(w,h, amt){
+  if(!snowParticles.length) initSnow();
+  snowHuePhase = (snowHuePhase + 0.002 + amt*0.01) % 1;
+  const wind = (Math.sin(performance.now()/1500)+Math.sin(performance.now()/2300))*0.2;
+  ctx.save(); ctx.globalCompositeOperation='screen';
+  for(let i=0;i<snowParticles.length;i++){
+    const p = snowParticles[i];
+    p.x += p.vx + wind*0.2; p.y += p.vy * (0.5 + amt*1.5);
+    if(p.x< -5) p.x=w+5; if(p.x> w+5) p.x=-5; if(p.y> h+5){ p.y = -5; p.x = Math.random()*w; }
+    const hue = Math.floor(360*((snowHuePhase + i*0.007) % 1));
+    ctx.fillStyle = `hsla(${hue}, 90%, 60%, 0.95)`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// Matrix Rain
+let matrixCols = null;
+const MATRIX_CHARS = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾜｦﾝ012345789";
+function initMatrix(w,h, size){
+  const columns = Math.ceil(w / size);
+  matrixCols = new Array(columns).fill(0).map((_,i)=> (Math.random()*-h)|0 );
+}
+function drawMatrix(w,h, amt){
+  const size = parseInt(document.getElementById('matrixGlyph').value||'18',10);
+  const speedCtl = parseFloat(document.getElementById('matrixSpeed')?.value || '1');
+  const colorCtl = document.getElementById('matrixColor')?.value || '#00ff90';
+  if(!matrixCols){ initMatrix(w,h,size); }
+  
+  // derive colors from chosen hex
+  function _hexToRGB(h){try{let r=0,g=0,b=0; if(h.length===4){r='0x'+h[1]+h[1];g='0x'+h[2]+h[2];b='0x'+h[3]+h[3];}else{r='0x'+h[1]+h[2];g='0x'+h[3]+h[4];b='0x'+h[5]+h[6];} return {r:+r,g:+g,b:+b};}catch(_){return {r:0,g:255,b:144};}
+  }
+  const rgb=_hexToRGB(colorCtl);
+// semi-transparent fade to create trails
+  ctx.save();
+  ctx.globalCompositeOperation='source-over';
+  ctx.fillStyle = 'rgba(0,0,0,' + (0.7 - Math.min(0.6, amt*0.45)) + ')';
+  ctx.fillRect(0,0,w,h);
+
+  ctx.font = size + "px monospace";
+  ctx.textBaseline = 'top';
+  const colCount = matrixCols.length;
+  for(let i=0;i<colCount;i++){
+    const x = i * size;
+    let y = matrixCols[i];
+
+    // Draw several glyphs per column per frame
+    const steps = 1 + Math.floor(amt*10);
+    for(let s=0; s<steps; s++){
+      const ch = MATRIX_CHARS[(Math.random()*MATRIX_CHARS.length)|0];
+      // bright head
+      ctx.fillStyle = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + (0.95 - amt*0.25) + ')'
+      ctx.fillText(ch, x, y);
+      // dim tail just above
+      ctx.fillStyle = 'rgba(' + Math.floor(rgb.r*0.33) + ',' + Math.floor(rgb.g*0.78) + ',' + Math.floor(rgb.b*0.48) + ',0.45)'
+      ctx.fillText(ch, x, y - size);
+      y += size;
+    }
+    // advance y based on density/amt
+    matrixCols[i] = matrixCols[i] + size * (0.002 + speedCtl*0.08 + amt*0.4);
+    if(matrixCols[i] > h + size*2){
+      matrixCols[i] = (Math.random()*-h)|0;
+    }
+  }
+  ctx.restore();
+}
+/* ===== Snow / Rain / Embers / Lightning ===== */
+function initSnow(){
+  snowParticles = [];
+  const w = cnv.width, h = cnv.height;
+  const base = 120;
+  const density = base * (w*h/1e6);
+  const count = Math.floor(density * (0.2 + parseFloat(bgFxAmt.value||'0')*1.2 + parseFloat(bgFxAmt2.value||'0')*1.2));
+  for(let i=0;i<count;i++){
+    snowParticles.push({ x: Math.random()*w, y: Math.random()*h, r: 0.5 + Math.random()*2.2, vx: -0.3 + Math.random()*0.6, vy: 0.3 + Math.random()*1.2 });
+  }
+}
+function drawSnow(w,h, amt, makeRed=false){
+  if(!snowParticles.length) initSnow();
+  const wind = (Math.sin(performance.now()/1500)+Math.sin(performance.now()/2300))*0.2;
+  ctx.save(); ctx.globalCompositeOperation='screen'; ctx.fillStyle = makeRed ? 'rgba(255,80,40,0.9)' : 'rgba(255,255,255,0.9)';
+  for(const p of snowParticles){
+    p.x += p.vx + wind*0.2; p.y += p.vy * (0.5 + amt*1.5);
+    if(p.x< -5) p.x=w+5; if(p.x> w+5) p.x=-5; if(p.y> h+5){ p.y = -5; p.x = Math.random()*w; }
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+    if(makeRed){
+      ctx.globalAlpha=0.4; ctx.beginPath(); ctx.arc(p.x, p.y, p.r*2.4, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
+    }
+  }
+  ctx.restore();
+}
+
+function initRain(){
+  rainDrops = [];
+  const w = cnv.width, h = cnv.height;
+  const base = 200;
+  const density = base * (w*h/1e6);
+  const count = Math.floor(density * (0.2 + parseFloat(bgFxAmt.value||'0')*1.6 + parseFloat(bgFxAmt2.value||'0')*1.6));
+  for(let i=0;i<count;i++){
+    const speed = 6 + Math.random()*8;
+    rainDrops.push({ x: Math.random()*w, y: Math.random()*h, len: 8 + Math.random()*14, vx: -1.5, vy: speed });
+  }
+}
+function drawRain(w,h, amt){
+  if(!rainDrops.length) initRain();
+  ctx.save(); ctx.globalCompositeOperation='screen'; ctx.strokeStyle='rgba(180,220,255,0.6)'; ctx.lineWidth=1;
+  const wind = -1.0 - amt*2.0;
+  for(const d of rainDrops){
+    d.x += wind; d.y += d.vy*(0.8 + amt*1.4);
+    if(d.y>h+5 || d.x<-5){ d.y = -10; d.x = Math.random()*w; }
+    ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x+wind*0.8, d.y-d.len); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function initEmbers(){
+  emberParticles = [];
+  const w = cnv.width, h = cnv.height;
+  const base = 140;
+  const density = base * (w*h/1e6);
+  const count = Math.floor(density);
+  for(let i=0;i<count;i++){
+    emberParticles.push(spawnEmber(w,h));
+  }
+}
+function spawnEmber(w,h){
+  return {
+    x: Math.random()*w,
+    y: h + Math.random()*h*0.2,
+    r: 0.8 + Math.random()*2.4,
+    vy: - (0.6 + Math.random()*1.8),
+    vx: (Math.random()-0.5)*0.8,
+    life: 1.0
+  };
+}
+function drawEmbers(w,h, amt){
+  if(!emberParticles.length) initEmbers();
+  ctx.save(); ctx.globalCompositeOperation='screen';
+  for(let i=emberParticles.length-1;i>=0;i--){
+    const e = emberParticles[i];
+    e.x += e.vx + Math.sin(performance.now()/600 + i)*0.2;
+    e.y += e.vy * (0.6 + amt*1.8);
+    e.life -= 0.004 + amt*0.01;
+    if(e.y < -10 || e.life<=0){ emberParticles[i] = spawnEmber(w,h); continue; }
+    const g = offCtx.createRadialGradient(e.x,e.y,0,e.x,e.y,e.r*3);
+    g.addColorStop(0, `rgba(255,140,40,0.9)`);
+    g.addColorStop(1, `rgba(255,0,0,0)`);
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.r*2, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function initLightning(){
+  lightningBolts = [];
+}
+function drawLightning(w,h, amt){
+  // Occasional flash and bolt based on amt
+  const chance = 0.02 + amt*0.15;
+  if(Math.random()<chance){
+    const x = Math.random()*w*0.8 + w*0.1;
+    const segments = 6 + (Math.random()*8)|0;
+    const path = [{x, y:-20}];
+    for(let i=1;i<=segments;i++){
+      const px = path[i-1].x + (Math.random()-0.5)*w*0.12;
+      const py = (i/segments)*h + Math.random()*15;
+      path.push({x: Math.max(0,Math.min(w,px)), y: py});
+    }
+    lightningBolts.push({ path, alpha: 1.0 });
+  }
+  // Draw bolts
+  ctx.save(); ctx.globalCompositeOperation='screen';
+  for(let i=lightningBolts.length-1;i>=0;i--){
+    const bolt = lightningBolts[i];
+    ctx.strokeStyle=`rgba(200,220,255,${bolt.alpha})`;
+    ctx.lineWidth=2.2;
+    ctx.beginPath();
+    for(let j=0;j<bolt.path.length;j++){
+      const p=bolt.path[j];
+      if(j===0) ctx.moveTo(p.x,p.y); else ctx.lineTo(p.x,p.y);
+    }
+    ctx.stroke();
+    // small branches
+    for(let j=1;j<bolt.path.length-1;j+=2){
+      const p=bolt.path[j];
+      ctx.beginPath();
+      ctx.moveTo(p.x,p.y);
+      ctx.lineTo(p.x + (Math.random()<0.5?-1:1)*20, p.y + 20 + Math.random()*20);
+      ctx.stroke();
+    }
+    bolt.alpha -= 0.06 + amt*0.08;
+    if(bolt.alpha<=0) lightningBolts.splice(i,1);
+  }
+  // Flash screen
+  if(Math.random()<chance*0.35){
+    ctx.fillStyle='rgba(255,255,255,'+(0.08+amt*0.15)+')';
+    ctx.fillRect(0,0,w,h);
+  }
+  ctx.restore();
+}
+
+/* ===== Frame overlay (thick 3×) ===== */
+function drawFrameOverlay(w,h){
+  const style = frameStyle.value; if(style==='none') return;
+  const col = frameColor.value || '#fff'; const a = parseFloat(frameAlpha.value||'1'); const r = Math.min(w,h);
+  ctx.save(); ctx.globalAlpha = a; ctx.globalCompositeOperation='source-over'; ctx.strokeStyle = col; ctx.fillStyle = col;
+  if(style==='thin' || style==='thick'){
+    const base = (style==='thin'? Math.max(2, r*0.004) : Math.max(6, r*0.012));
+    ctx.lineWidth = (style==='thick'? base*3 : base); /* 3× thicker */
+    ctx.strokeRect(4,4, w-8, h-8);
+  } else if(style==='rounded'){
+    const rad = Math.max(8, r*0.03); const lw = Math.max(4, r*0.008);
+    ctx.lineWidth = lw;
+    roundRect(ctx, 6,6, w-12, h-12, rad); ctx.stroke();
+  } else if(style==='film'){
+    const bw = Math.max(10, r*0.04); ctx.globalAlpha = a*0.85;
+    ctx.fillRect(0,0, w, bw); ctx.fillRect(0,h-bw, w, bw); ctx.fillRect(0,0, bw, h); ctx.fillRect(w-bw,0, bw, h);
+    ctx.globalAlpha = a; ctx.lineWidth = Math.max(2, r*0.004); ctx.strokeRect(bw+2, bw+2, w-2*(bw+2), h-2*(bw+2));
+  }
+  ctx.restore();
+}
+function roundRect(ctx,x,y,w,h,r){
+  const rr = Math.min(r, w/2, h/2);
+  ctx.beginPath(); ctx.moveTo(x+rr,y);
+  ctx.arcTo(x+w,y, x+w,y+h, rr); ctx.arcTo(x+w,y+h, x,y+h, rr);
+  ctx.arcTo(x,y+h, x,y, rr); ctx.arcTo(x,y, x+w,y, rr); ctx.closePath();
+}
+
+/* ===== Meter + Overlays ===== */
+function drawFrame(){
+  const w=cnv.width,h=cnv.height;
+
+  // BG
+  drawBackground(w,h);
+
+  // BG FX (both) & frame
+  applyBackgroundFXAll(w,h);
+  drawFrameOverlay(w,h);
+
+  if(!analyser) return;
+  analyser.getByteTimeDomainData(dataArray);
+  analyser.getByteFrequencyData(freqArray);
+
+  // Meter FX transforms
+  const cx = w*parseFloat(posX.value), cy = h*parseFloat(posY.value);
+  ctx.save(); ctx.translate(cx, cy);
+
+  // Rotation
+  let angle=0; if(fxRotate.value!=='off'){
+    const sp = parseFloat(fxRotateSpeed.value||'0.25');
+    angle = (performance.now()/1000)*sp + (fxRotate.value==='beat'? averageFreq()*2.0 : 0);
+    ctx.rotate(angle);
+  }
+  // Pulse
+  if(fxPulse.value!=='off'){
+    const amt = parseFloat(fxPulseAmt.value||'0.2'); const react = averageFreq(); const base = (fxPulse.value==='strong'? 0.25 : 0.1);
+    const p = 1 + (base + amt) * (react-0.2); ctx.scale(p, p);
+  }
+  ctx.translate(-cx, -cy);
+
+  ctx.globalCompositeOperation=blendMode.value;
+  ctx.lineCap=caps.value;
+  const glow=parseInt(glowSel.value,10)||0; ctx.shadowBlur=glow;
+  ctx.shadowColor=glow? (colorMode.value==='solid'? vizColor.value : '#ffffff') : 'transparent';
+
+  const thick=parseFloat(thickness.value), scl=parseFloat(scale.value);
+  const N=Math.max(8, Math.min(parseInt(barCount.value,10), 256));
+  if(peaksArray.length!==N) peaksArray=Array(N).fill(0);
+
+  switch(vizType.value){
+    case 'bars-v': drawBarsVertical(cx,cy,N,thick,scl); break;
+    case 'bars-h': drawBarsHorizontal(cx,cy,N,thick,scl); break;
+    case 'radial': drawRadial(cx,cy,N,thick,scl); break;
+    case 'wave': drawWave(cx,cy,thick,scl); break;
+  }
+
+  
+  
+  // Mirror axes rendering (independent X/Y)
+  ;(function(){
+    const mxOn = document.getElementById('vizMirrorX')?.checked;
+    const myOn = document.getElementById('vizMirrorY')?.checked;
+    if(!mxOn && !myOn) return;
+    const mx = w - cx, my = h - cy;
+    const V = vizType.value;
+    // helper to mirror both axes if both toggled
+    function doMirrors(fnXY){
+      if(mxOn) fnXY('x');
+      if(myOn) fnXY('y');
+      if(mxOn && myOn) fnXY('xy');
+    }
+    switch(V){
+      case 'bars-v':
+        doMirrors(axis => {
+          if(axis==='x') drawBarsVertical(mx, cy, N, thick, scl);
+          if(axis==='y') {/* vertical bars: Y mirror doesn't change orientation; mirror around X axis by flipping cy */ drawBarsVertical(cx, my, N, thick, scl); }
+          if(axis==='xy') drawBarsVertical(mx, my, N, thick, scl);
+        });
+        break;
+      case 'bars-h':
+        doMirrors(axis => {
+          if(axis==='x') drawBarsHorizontal(mx, cy, N, thick, scl);
+          if(axis==='y') drawBarsHorizontal(cx, my, N, thick, scl);
+          if(axis==='xy') drawBarsHorizontal(mx, my, N, thick, scl);
+        });
+        break;
+      case 'wave':
+        // Apply to Y axis only (per request); X mirror optional if toggled
+        doMirrors(axis => {
+          if(axis==='y') drawWave(cx, my, thick, scl);
+          if(axis==='x') drawWave(mx, cy, thick, scl);
+          if(axis==='xy') drawWave(mx, my, thick, scl);
+        });
+        break;
+      case 'radial':
+        // Apply to both axes
+        doMirrors(axis => {
+          if(axis==='x') drawRadial(mx, cy, N, thick, scl);
+          if(axis==='y') drawRadial(cx, my, N, thick, scl);
+          if(axis==='xy') drawRadial(mx, my, N, thick, scl);
+        });
+        break;
+    }
+  })();
+// Mirror (opposite side) for bar visualizers
+  
+// Kaleidoscope
+  if(fxKaleido.value!=='off'){
+    const slices = fxKaleido.value==='mirror4'?4:fxKaleido.value==='mirror6'?6:8;
+    ctx.globalCompositeOperation='lighter';
+    for(let i=1;i<slices;i++){
+      ctx.save(); ctx.translate(cx,cy); ctx.rotate((Math.PI*2/slices)*i); ctx.translate(-cx,-cy);
+      switch(vizType.value){
+        case 'bars-v': drawBarsVertical(cx,cy,N,Math.max(1,thick*0.8),scl*0.95); break;
+        case 'bars-h': drawBarsHorizontal(cx,cy,N,Math.max(1,thick*0.8),scl*0.95); break;
+        case 'radial': drawRadial(cx,cy,N,Math.max(1,thick*0.9),scl); break;
+        case 'wave': drawWave(cx,cy,Math.max(1,thick*0.8),scl); break;
+      }
+      ctx.restore();
+    }
+  }
+
+  ctx.restore();
+
+  // Title card
+  if(audioBuffer){
+    const t = audioCtx.currentTime - startTime, dur = audioBuffer.duration || 0;
+    if((t >= 0 && t <= TITLE_CARD_SECONDS) || (dur && t >= dur - TITLE_CARD_SECONDS)){ drawTitleCard(); }
+  }
+
+  // Lyrics
+  if(lyricsEnable.value==='on' && srtCues.length){ drawLyrics(); }
+
+  // Brand watermark TOP-RIGHT
+  drawBrandWatermarkTopRight();
+
+  // Tiny canvas watermark
+  drawCornerWatermark();
+
+  ctx.globalCompositeOperation='source-over'; ctx.shadowBlur=0;
+  try{ drawLogoOverlay(ctx); }catch(e){}
+}
+
+function averageFreq(){ if(!freqArray || !freqArray.length) return 0; let s=0; for(let i=0;i<freqArray.length;i++) s += freqArray[i]; return (s / (freqArray.length*255)); }
+function pickFreq(i,N){ const binCount=freqArray.length; const t=i/(N-1); const tt=mapT(t); const idx=Math.floor(tt*(binCount-1)); return freqArray[Math.max(0,Math.min(binCount-1,idx))]/255; }
+function colorFor(i,N){
+  if(colorMode.value==='rainbow'){ const hue=(i/N)*360; return `hsl(${hue} 90% 60%)`; }
+  if(colorMode.value==='rgb'){ const t=audioCtx?audioCtx.currentTime:0; const hue=(t*60 + i*(360/N))%360; return `hsl(${hue} 90% 60%)`; }
+  return vizColor.value;
+}
+function drawBarsVertical(cx,cy,N,thick,scl){
+  const w=cnv.width,h=cnv.height, region = Math.max(0.1, Math.min(1, parseFloat(regionW.value||'0.9'))) * w;
+  const left=Math.max(0, cx - region/2), right=Math.min(w, cx + region/2), span=Math.max(1, right-left);
+  const cell=span/N, barW=Math.max(1, Math.min(cell*0.6, thick));
+  for(let i=0;i<N;i++){
+    const x = left + (i+0.5)*cell, v=pickFreq(i,N), mag=v*0.95*scl, barH = mag * (h*0.5);
+    if(peaksSel.value==='on'){ peaksArray[i]=Math.max(peaksArray[i]*0.96, barH); }
+    ctx.strokeStyle=colorFor(i,N); ctx.lineWidth=barW; ctx.beginPath(); ctx.moveTo(x,cy); ctx.lineTo(x,cy-barH); ctx.stroke();
+    if(peaksSel.value==='on') { ctx.beginPath(); ctx.moveTo(x, cy - peaksArray[i]); ctx.lineTo(x, cy - peaksArray[i] - 3); ctx.stroke(); }
+  }
+  for(let i=0;i<N;i++){
+    const x = left + (i+0.5)*cell, v=pickFreq(i,N), mag=v*0.95*scl, barH = mag * (h*0.5);
+    ctx.strokeStyle=colorFor(i,N); ctx.lineWidth=barW; ctx.beginPath(); ctx.moveTo(x,cy); ctx.lineTo(x,cy+barH*0.6); ctx.stroke();
+  }
+}
+function drawBarsHorizontal(cx,cy,N,thick,scl){
+  const w=cnv.width,h=cnv.height, region = Math.max(0.1, Math.min(1, parseFloat(regionW.value||'0.9'))) * h;
+  const top=Math.max(0, cy - region/2), bottom=Math.min(h, cy + region/2), span=Math.max(1, bottom-top);
+  const cell=span/N, barH=Math.max(1, Math.min(cell*0.6, thick));
+  for(let i=0;i<N;i++){
+    const y = top + (i+0.5)*cell, v=pickFreq(i,N), mag=v*0.95*scl, barW = mag * (w*0.45);
+    ctx.strokeStyle=colorFor(i,N); ctx.lineWidth=barH; ctx.beginPath(); ctx.moveTo(cx,y); ctx.lineTo(cx+barW,y); ctx.stroke();
+  }
+}
+function drawRadial(cx,cy,N,thick,scl){
+  const baseR=Math.min(cnv.width,cnv.height)*0.2;
+  for(let i=0;i<N;i++){
+    const v=pickFreq(i,N); const a=(i/N)*Math.PI*2; const r=baseR + v*baseR*1.5*scl;
+    const x=cx+Math.cos(a)*r; const y=cy+Math.sin(a)*r;
+    ctx.strokeStyle=colorFor(i,N); ctx.lineWidth=thick; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(x,y); ctx.stroke();
+  }
+}
+function drawWave(cx,cy,thick,scl){
+  const w=cnv.width, h=cnv.height; ctx.lineWidth=Math.max(1,thick*0.6); ctx.strokeStyle=colorFor(0,1); ctx.beginPath();
+  for(let i=0;i<dataArray.length;i++){
+    const t=i/(dataArray.length-1); const x=t*w; const y=cy + ((dataArray[i]-128)/128)*(h*0.25)*scl; if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+}
+
+/* ===== Title card ===== */
+function drawTitleCard(){
+  const title = (songTitle.value||'').trim(); const artist = (songArtist.value||'').trim(); if(!title && !artist) return;
+  ctx.save(); ctx.globalCompositeOperation='source-over'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  const dpr = window.devicePixelRatio||1; const cx = cnv.width/2, cy = cnv.height/2;
+  ctx.shadowColor='rgba(0,0,0,0.6)'; ctx.shadowBlur = 10 * dpr;
+  ctx.fillStyle='#ffffff'; ctx.font = `${Math.round(56*dpr)}px Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif`; ctx.fillText(title || '', cx, cy - 18*dpr);
+  ctx.fillStyle='#d0d0d0'; ctx.font = `${Math.round(28*dpr)}px 'Segoe UI', Roboto, Arial, sans-serif`; if(artist) ctx.fillText(`by ${artist}`, cx, cy + 26*dpr);
+  ctx.restore();
+}
+
+/* ===== Lyrics (.srt) ===== */
+function parseSRT(text){
+  const lines=text.replace(/\r/g,'').split('\n'); const cues=[]; let i=0;
+  const ts=/^(\d\d):(\d\d):(\d\d),(\d\d\d)\s+-->\s+(\d\d):(\d\d):(\d\d),(\d\d\d)$/;
+  while(i<lines.length){
+    if(/^\d+$/.test((lines[i]||'').trim())) i++;
+    const m=ts.exec(lines[i]||''); if(!m){ i++; continue; }
+    const start=toSec(m[1],m[2],m[3],m[4]); const end=toSec(m[5],m[6],m[7],m[8]); i++;
+    const textLines=[]; while(i<lines.length && (lines[i]||'').trim()!==''){ textLines.push(lines[i]); i++; }
+    const cueText=textLines.join('\n').replace(/<[^>]*>/g,''); cues.push({start,end,text:cueText});
+    while(i<lines.length && (lines[i]||'').trim()==='') i++;
+  } return cues;
+}
+function toSec(h,m,s,ms){ return (+h)*3600 + (+m)*60 + (+s) + (+ms)/1000; }
+function drawLyrics(){
+  const t = audioCtx.currentTime - startTime; let cue=null; for(const c of srtCues){ if(t>=c.start && t<=c.end){ cue=c; break; } } if(!cue) return;
+  const y = cnv.height * parseFloat(lyY.value); const size = parseInt(lySize.value,10)||42; const font = size + 'px ' + lyFont.value;
+  const base = lyColor.value; const prog = lyProg.value;
+  ctx.save(); ctx.font = font; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.shadowColor='black'; ctx.shadowBlur=6; ctx.lineWidth=6; ctx.strokeStyle='rgba(0,0,0,.65)';
+  const lines = cue.text.split('\n'); const progress = Math.max(0, Math.min(1, (t - cue.start) / Math.max(0.01, cue.end - cue.start)));
+  for(let li=0; li<lines.length; li++){
+    const line = lines[li]; const yLine = y + (li - (lines.length-1)/2) * (size*1.3);
+    ctx.fillStyle=base; ctx.strokeText(line, cnv.width/2, yLine); ctx.fillText(line, cnv.width/2, yLine);
+    const w = ctx.measureText(line).width; const clipW = w * progress; ctx.save(); ctx.beginPath();
+    ctx.rect(cnv.width/2 - w/2, yLine - size*0.8, clipW, size*1.4); ctx.clip(); ctx.fillStyle=prog; ctx.fillText(line, cnv.width/2, yLine); ctx.restore();
+  }
+  ctx.restore();
+}
+
+/* ===== Brand Watermark (TOP-RIGHT) ===== */
+function drawBrandWatermarkTopRight(){
+  const mode = wmSelect.value; const dpr = window.devicePixelRatio || 1; const pad = 16 * dpr; const W = 200 * dpr; const H = 100 * dpr;
+  const x = cnv.width - pad - W; const y = pad;
+  const brandMap = { fenix:{label:'FENIX',sub:'STUDIO',color:'#ff9c2a'}, aidiy:{label:'AiDiY',sub:'aidiy.tech',color:'#4da3ff'}, aims:{label:'AIMS',sub:'aimusicsociety.com',color:'#9aff7a'} };
+  let mainTxt='', subTxt='', color='#ff9c2a';
+  const __wmPick = document.getElementById('wmColor')?.value; if(__wmPick) color = __wmPick;
+  if(mode==='customText'){
+    mainTxt=(document.getElementById('wmMain').value||'').slice(0,12);
+    subTxt=(document.getElementById('wmSub').value||'').slice(0,24);
+    color = (wmColor?.value)||'#ff9c2a';
+  } else {
+    const b=brandMap[mode]; if(!b) return; mainTxt=b.label; subTxt=b.sub; color=b.color;
+  }
+  ctx.save(); ctx.globalCompositeOperation='source-over'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=6*dpr;
+  const __wmPick2 = document.getElementById('wmColor')?.value; if(__wmPick2) color = __wmPick2; ctx.fillStyle=color; ctx.font = (40*dpr) + "px Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif"; ctx.fillText(mainTxt, x + W/2, y + H*0.48);
+  if(subTxt){ ctx.font = (18*dpr) + "px 'Segoe UI', Arial, sans-serif"; ctx.fillStyle = '#ffffff'; ctx.fillText(subTxt, x + W/2, y + H*0.78); }
+  ctx.restore();
+}
+// WM color field visibility toggle
+/* wm color toggle removed (always visible) */
+
+/* ===== Tiny Canvas Watermark (always on) ===== */
+function drawCornerWatermark(){
+  const dpr = window.devicePixelRatio || 1; const pad = 8 * dpr;
+  ctx.save(); ctx.globalCompositeOperation='source-over'; ctx.textAlign='right'; ctx.textBaseline='bottom';
+  ctx.shadowColor='rgba(0,0,0,0.7)'; ctx.shadowBlur=4*dpr; ctx.fillStyle='#ffffff'; ctx.font = (10*dpr) + "px 'Segoe UI', Arial, sans-serif";
+  ctx.fillText('Created at fenixstudio.org', cnv.width - pad, cnv.height - pad); ctx.restore();
+}
+
+/* ===== Image List ===== */
+function updateImgList(){
+  imgListEl.innerHTML=''; if(!images.length){ imgListEl.innerHTML='<div style="opacity:.7">No images yet.</div>'; return; }
+  images.forEach((it, idx)=>{
+    const row = document.createElement('div'); row.className='imgrow';
+    const name = document.createElement('span'); name.textContent=it.name || `Image ${idx+1}`;
+    const mini = document.createElement('div'); mini.className='mini';
+    const up = document.createElement('button'); up.textContent='↑';
+    const down = document.createElement('button'); down.textContent='↓';
+    const rem = document.createElement('button'); rem.textContent='✕';
+    up.onclick = ()=>{ if(idx<=0) return; const t=images[idx-1]; images[idx-1]=images[idx]; images[idx]=t; if(currentImageIndex===idx) currentImageIndex=idx-1; else if(currentImageIndex===idx-1) currentImageIndex=idx; updateImgList(); };
+    down.onclick = ()=>{ if(idx>=images.length-1) return; const t=images[idx+1]; images[idx+1]=images[idx]; images[idx]=t; if(currentImageIndex===idx) currentImageIndex=idx+1; else if(currentImageIndex===idx+1) currentImageIndex=idx; updateImgList(); };
+    rem.onclick = ()=>{ images.splice(idx,1); if(currentImageIndex>=images.length) currentImageIndex = Math.max(0, images.length-1); updateImgList(); };
+    mini.appendChild(up); mini.appendChild(down); mini.appendChild(rem); row.appendChild(name); row.appendChild(mini); imgListEl.appendChild(row);
+  });
+}
+
+/* ===== Loudness UI ===== */
+const loudAuto   = document.getElementById('loudAuto');
+const loudTarget = document.getElementById('loudTarget');
+const loudTargetVal = document.getElementById('loudTargetVal');
+const limThr = document.getElementById('limThr');
+const limThrVal = document.getElementById('limThrVal');
+const limRel = document.getElementById('limRel');
+const limRelVal = document.getElementById('limRelVal');
+
+loudTarget.addEventListener('input', ()=>{
+  loudTargetVal.textContent = `${parseFloat(loudTarget.value).toFixed(1)} dBFS`;
+  applyLoudnessTarget();
+});
+loudAuto.addEventListener('change', ()=> applyLoudnessTarget());
+document.getElementById('limitEnable').addEventListener('change', ()=> wireGraph());
+limThr.addEventListener('input', ()=>{
+  limThrVal.textContent = `${parseFloat(limThr.value).toFixed(1)} dBFS`;
+  if(limNode) limNode.threshold.value = parseFloat(limThr.value);
+});
+limRel.addEventListener('input', ()=>{
+  limRelVal.textContent = `${parseFloat(limRel.value).toFixed(2)} s`;
+  if(limNode) limNode.release.value = parseFloat(limRel.value);
+});
+
+function applyLoudnessTarget(){
+  if(!preGain || !audioBuffer) return;
+  if(loudAuto.value==='off'){ preGain.gain.value=1; return; }
+  const target = parseFloat(loudTarget.value); // dBFS
+  const rms = estimateRMSFromBuffer(audioBuffer); const current = dbfsFromRMS(rms);
+  const diff = target - current; const gain = Math.pow(10, diff/20);
+  preGain.gain.value = Math.min(6, Math.max(0.1, gain)); // clamp 0.1x..6x
+}
+
+/* ===== Misc ===== */
+function status(msg){ statusEl.textContent = msg; }
+function resizeCanvas(){ const rect=cnv.getBoundingClientRect(); const dpr=window.devicePixelRatio||1; cnv.width=Math.round(rect.width*dpr); cnv.height=Math.round((rect.width*9/16)*dpr); if(bgFx.value.includes('snow')||bgFx2.value.includes('snow')) initSnow(); if(bgFx.value==='rain'||bgFx2.value==='rain') initRain(); if(bgFx.value==='embers'||bgFx2.value==='embers') initEmbers(); }
+window.addEventListener('resize', resizeCanvas); resizeCanvas();
+bgGreen.addEventListener('click', ()=>{ bgColor.value = '#00ff00'; });
+
+/* ===== Init labels ===== */
+loudTargetVal.textContent = `${parseFloat(loudTarget.value).toFixed(1)} dBFS`;
+limThrVal.textContent = `${parseFloat(limThr.value).toFixed(1)} dBFS`;
+limRelVal.textContent = `${parseFloat(limRel.value).toFixed(2)} s`;
+updateBgFxLabel(bgFx, bgFxAmtLabel);
+updateBgFxLabel(bgFx2, bgFx2AmtLabel);
+wmColorField.style.display = (wmSelect.value==='customText') ? '' : 'none';
+
+</script>
+
+<!-- === Background Image Library Modal === -->
+<dialog id="bgLibModal" style="max-width:960px;width:90vw">
+  <form method="dialog" style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px">
+    <strong>Background Image Library</strong>
+    <div style="display:flex;gap:8px;align-items:center">
+      <label class="btn" for="bgLibLoadServer" id="bgLibLoadServerLabel">Load from /images</label><button type="button" id="bgLibLoadServer" style="display:none"></button>
+      <button value="cancel">Close</button>
+    </div>
+  </form>
+  <div id="bgLibStatus" style="font-size:12px;opacity:.8;margin-bottom:8px;"></div>
+  <div id="bgGrid" class="bg-grid-thumbs"></div>
+</dialog>
+
+
+</div><!-- /.controls-wrap --></div><!-- /.main-wrap -->
+
+<footer id="fenix-footer" style="margin:24px auto 12px;max-width:960px;text-align:center;color:#b9c4d3;opacity:.9;font-size:12px">
+  <a href="https://FenixStudio.org" target="_blank" rel="noopener" style="color:#9fc5ff;text-decoration:none;border-bottom:1px dotted #2b67a1">
+    Fenix Visualizer, created by FenixStudio.org
+  </a>
+</footer>
+
+</body>
+</html>
